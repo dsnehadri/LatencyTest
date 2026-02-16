@@ -50,16 +50,12 @@ int main(int argc, char** argv) {
         xrt::device dev(0);
         auto uuid = dev.load_xclbin(xclbin_path);
 
-        // Kernel CU names from IP_LAYOUT dump
-
         xrt::kernel k_mm2s(dev, uuid, "mm2s:{mm2s_0}");
         xrt::kernel k_s2mm(dev, uuid, "s2mm:{s2mm_0}");
 
-        // AIE graph name from AIE_METADATA dump
-
         xrt::graph g(dev, uuid, "g");
 
-        // Allocate input/output in device DDR. Use group_id(0) to pick the right bank for M_AXI_GMEM
+        // allocate input/output in device DDR
 
         xrt::bo in_bo(dev, bytes_per_iter, k_mm2s.group_id(0));
         xrt::bo out_bo(dev, bytes_per_iter, k_s2mm.group_id(0));
@@ -67,7 +63,7 @@ int main(int argc, char** argv) {
         auto in_map = in_bo.map<uint8_t*>();
         auto out_map = out_bo.map<uint8_t*>();
 
-        // Initialize buffers
+        // initialize buffers
         try {
             fprintf(stderr, "resetting graph\n"); fflush(stderr);
             g.reset();
@@ -82,11 +78,7 @@ int main(int argc, char** argv) {
             in_map[i] = static_cast<uint8_t>(i & 0xFF);
         std::memset(out_map, 0, bytes_per_iter);
 
-        // Push input to device DDR
-
         in_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, bytes_per_iter, /*offset*/0);
-
-        // Warmup + measure loop
 
         uint64_t total_kernel_ns = 0;
 
@@ -112,10 +104,6 @@ int main(int argc, char** argv) {
             r_s2mm.start();
             fprintf(stderr, "starting mm2s\n"); fflush(stderr);
             r_mm2s.start();
-            
-            // starting graph
-            // std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
 
             const uint64_t t0 = now_ns();
 
@@ -129,17 +117,14 @@ int main(int argc, char** argv) {
 
             const uint64_t t1 = now_ns();
 
-            // g.wait();
-
             total_kernel_ns += (t1 - t0);
         }
 
-        // Stop graph ONCE (after loop)
-        // g.terminate();
+        // stop graph
 
         out_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, bytes_per_iter, /*offset*/0);
 
-        //verify correctness
+        // verify correctness
 
         size_t bad = 0;
 

@@ -1,10 +1,15 @@
-build/
-_x/
-*.xo
-*.xsa
-*.xclbin
-*.exe
-*.log
-*.o
-Work/
-.Xil/
+# Ignore everything
+*
+
+# Allow these
+!.gitignore
+!README.md
+!Makefile
+!config.ini
+!host.cpp
+!aie/
+!aie/*.cpp
+!aie/*.cc
+!aie/*.h
+!pl_kernels/
+!pl_kernels/*.cpp
