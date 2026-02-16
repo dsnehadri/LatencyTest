@@ -1,0 +1,10 @@
+build/
+_x/
+*.xo
+*.xsa
+*.xclbin
+*.exe
+*.log
+*.o
+Work/
+.Xil/
