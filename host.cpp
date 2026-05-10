@@ -15,6 +15,7 @@
 #include <xrt/xrt_device.h>
 #include <xrt/xrt_graph.h>
 #include <xrt/xrt_kernel.h>
+#include "plio_config.h"
 
 static uint64_t now_ns() {
     using namespace std::chrono;
@@ -33,12 +34,13 @@ int main(int argc, char** argv) {
     const size_t bytes_per_iter = (argc >= 3)? std::stoull(argv[2]) : (1u << 20);
     const int iters = (argc >= 4) ? std::stoi(argv[3]) : (10);
 
-    if (bytes_per_iter % 4 != 0) {
-        std::cerr << "Bytes per iteration must be a multiple of 4 for 32-bit kernels. Got " << bytes_per_iter << '\n';        return 2;
+    if (bytes_per_iter % PLIO_BYTES != 0) {
+        std::cerr << "Bytes per iteration must be a multiple of " << PLIO_BYTES << " for " << PLIO_WIDTH << "-bit kernels. Got " << bytes_per_iter << '\n';
+        return 2;
     }
 
-    const uint32_t word_count = static_cast<uint32_t>(bytes_per_iter / 4);
-    const size_t actual_bytes = static_cast<size_t>(word_count) * 4;  // 32-bit words
+    const uint32_t word_count = static_cast<uint32_t>(bytes_per_iter / PLIO_BYTES);
+    const size_t actual_bytes = static_cast<size_t>(word_count) * PLIO_BYTES;
     fprintf(stderr, "argc=%d bytes_per_iter=%zu word_count=%u actual_bytes=%zu\n",
         argc, bytes_per_iter, word_count, actual_bytes);
     fflush(stderr);

@@ -1,6 +1,15 @@
 #include <adf.h>
 #include "kernels.h"
+#include "../plio_config.h"
 using namespace adf;
+
+#if PLIO_WIDTH == 128
+  #define PLIO_BITS plio_128_bits
+#elif PLIO_WIDTH == 64
+  #define PLIO_BITS plio_64_bits
+#else
+  #define PLIO_BITS plio_32_bits
+#endif
 
 class bench_graph : public graph {
     public:
@@ -9,8 +18,8 @@ class bench_graph : public graph {
     output_plio out0;
 
     bench_graph()
-    : in0 (input_plio::create("DataIn1", plio_128_bits, "data/input.txt"))
-    , out0 (output_plio::create("DataOut1", plio_128_bits, "data/output.txt"))
+    : in0 (input_plio::create("DataIn1", PLIO_BITS, "data/input.txt"))
+    , out0 (output_plio::create("DataOut1", PLIO_BITS, "data/output.txt"))
     {
         k = kernel::create(passthrough);
         source(k) = "aie/passthrough.cc";

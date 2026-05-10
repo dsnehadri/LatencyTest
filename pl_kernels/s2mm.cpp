@@ -7,11 +7,12 @@ SPDX-License-Identifier: X11
 #include <ap_int.h>
 #include <hls_stream.h>
 #include <ap_axi_sdata.h>
+#include "../plio_config.h"
 
 
 extern "C" {
 
-void s2mm(ap_int<128>* mem, hls::stream<ap_axis<128, 0, 0, 0>  >& s, int size) {
+void s2mm(ap_int<PLIO_WIDTH>* mem, hls::stream<ap_axis<PLIO_WIDTH, 0, 0, 0>>& s, int size) {
 #pragma HLS INTERFACE m_axi port=mem offset=slave bundle=gmem
 
 #pragma HLS interface axis port=s
@@ -22,7 +23,7 @@ void s2mm(ap_int<128>* mem, hls::stream<ap_axis<128, 0, 0, 0>  >& s, int size) {
 
 	for(int i = 0; i < size; i++) {
 #pragma HLS PIPELINE II=1
-		ap_axis<128, 0, 0, 0> x = s.read();
+		ap_axis<PLIO_WIDTH, 0, 0, 0> x = s.read();
 		mem[i] = x.data;
 	}
 
