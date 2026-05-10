@@ -34,14 +34,13 @@ int main(int argc, char** argv) {
     const int iters = (argc >= 4) ? std::stoi(argv[3]) : (10);
 
     if (bytes_per_iter % 4 != 0) {
-        std::cerr << "Bytes per iteration must be a multiple of 4 for 32-bit kernels. Got" << bytes_per_iter << 'n';
-        return 2;
+        std::cerr << "Bytes per iteration must be a multiple of 4 for 32-bit kernels. Got " << bytes_per_iter << '\n';        return 2;
     }
 
-    const uint32_t word_count = static_cast<uint32_t>(bytes_per_iter/4);
-
-    fprintf(stderr, "argc=%d bytes_per_iter=%zu word_count=%u\n",
-            argc, bytes_per_iter, word_count);
+    const uint32_t word_count = static_cast<uint32_t>(bytes_per_iter / 4);
+    const size_t actual_bytes = static_cast<size_t>(word_count) * 4;  // 32-bit words
+    fprintf(stderr, "argc=%d bytes_per_iter=%zu word_count=%u actual_bytes=%zu\n",
+        argc, bytes_per_iter, word_count, actual_bytes);
     fflush(stderr);
 
     try {
@@ -64,16 +63,16 @@ int main(int argc, char** argv) {
         auto out_map = out_bo.map<uint8_t*>();
 
         // initialize buffers
-        try {
-            fprintf(stderr, "resetting graph\n"); fflush(stderr);
-            g.reset();
-            fprintf(stderr, "running graph\n"); fflush(stderr);
-            g.run(-1);
-            fprintf(stderr, "graph.run() returned\n"); fflush(stderr);
-        } catch (const std::exception& e) {
-            fprintf(stderr, "Graph error: %s\n", e.what()); fflush(stderr);
-            return 1;
-        }
+        // try {
+            // fprintf(stderr, "resetting graph\n"); fflush(stderr);
+            // g.reset();
+            // fprintf(stderr, "running graph\n"); fflush(stderr);
+            // g.run(-1);
+            // fprintf(stderr, "graph.run() returned\n"); fflush(stderr);
+        // } catch (const std::exception& e) {
+        //     fprintf(stderr, "Graph error: %s\n", e.what()); fflush(stderr);
+        //     return 1;
+        // }
         for (size_t i = 0; i < bytes_per_iter; ++i) 
             in_map[i] = static_cast<uint8_t>(i & 0xFF);
         std::memset(out_map, 0, bytes_per_iter);
@@ -84,7 +83,10 @@ int main(int argc, char** argv) {
 
         for (int rep = 0; rep < iters; ++rep) {
 
-            fprintf(stderr, "iteration %d\n", rep); fflush(stderr);
+            g.reset();
+            g.run(1);
+
+            // fprintf(stderr, "iteration %d\n", rep); fflush(stderr);
 
             if (rep == 0) {
                 fprintf(stderr, "starting graph\n"); fflush(stderr);
@@ -100,20 +102,13 @@ int main(int argc, char** argv) {
             r_mm2s.set_arg(1, nullptr);
             r_mm2s.set_arg(2, word_count);   // size
 
-            fprintf(stderr, "starting s2mm\n"); fflush(stderr);
             r_s2mm.start();
-            fprintf(stderr, "starting mm2s\n"); fflush(stderr);
             r_mm2s.start();
 
             const uint64_t t0 = now_ns();
 
-            fprintf(stderr, "waiting mm2s\n"); fflush(stderr);
             r_mm2s.wait();
-            fprintf(stderr, "mm2s done\n"); fflush(stderr);
-
-            fprintf(stderr, "waiting s2mm\n"); fflush(stderr);
             r_s2mm.wait();
-            fprintf(stderr, "s2mm done\n"); fflush(stderr);
 
             const uint64_t t1 = now_ns();
 
@@ -142,13 +137,12 @@ int main(int argc, char** argv) {
 
         // bandwidth is end-to-end payload per iteration
 
-        const double gbps_one_way = (static_cast<double>(bytes_per_iter) / avg_s) / 1e9;
-        const double gbps_roundtrip = (static_cast<double>(2*bytes_per_iter) / avg_s) / 1e9;
+        const double gbps_one_way = (static_cast<double>(actual_bytes) / avg_s) / 1e9;
+        const double gbps_roundtrip = (static_cast<double>(2*actual_bytes) / avg_s) / 1e9;
 
-        std::cout << "bytes_per_iter = " << bytes_per_iter << "iters: " << iters << "\n";
-        std::cout << "avg_kernel_time_s = " << std::setprecision(6) << avg_s << "\n";
-        std::cout << "throughput_one_way_GB/s" << std::setprecision(6) << gbps_one_way << "\n";
-        std::cout << "throughput_roundtrip_GB/s" << std::setprecision(6) << gbps_roundtrip << "\n";
+        std::cout << "bytes_per_iter = " << bytes_per_iter << " iters: " << iters << "\n";        std::cout << "avg_kernel_time_s = " << std::setprecision(6) << avg_s << "\n";
+        std::cout << "throughput_one_way_GB/s = " << std::setprecision(6) << gbps_one_way << "\n";
+        std::cout << "throughput_roundtrip_GB/s = " << std::setprecision(6) << gbps_roundtrip << "\n";
         std::cout << "verify_bad_bytes=" << bad << "\n";
 
         return bad ? 1 : 0;
